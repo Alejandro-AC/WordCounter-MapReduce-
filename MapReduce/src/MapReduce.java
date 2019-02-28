@@ -7,18 +7,18 @@ import java.util.List;
 
 class MapReduce {
 
-    public List<String> getLiniesFromFile(String path){
+    public List<String> getLinesFromFile(String path){
 
-        String linia;
+        String line;
         List<String> lineslist = new ArrayList<>();
 
         try {
             FileReader fileReader = new FileReader(path);
             BufferedReader br = new BufferedReader(fileReader);
-            while(( linia = br.readLine()) != null){
-                if(!linia.isEmpty()){
+            while(( line = br.readLine()) != null){
+                if(!line.isEmpty()){
 
-                    lineslist.add(linia);
+                    lineslist.add(line);
                 }
             }
         }catch (FileNotFoundException e){

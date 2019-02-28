@@ -3,25 +3,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-    private static List<String> llistatlinies = new ArrayList<>();
+    private static List<String> lineslist = new ArrayList<>();
     public static void main(String[] args) {
 
         if(args.length == 0){
-            System.out.println("No s'ha especificat cap arxiu");
+            System.out.println("File not especified");
         }else{
             for(int i=0;i<args.length;i++){
 
-                File arxiu = new File(args[i]);
+                File file = new File(args[i]);
 
-                if(arxiu.exists()){
+                if(file.exists()){
 
-                    //TODO tota la lògica del MapReduce
+                    //TODO all logic of MapReduce
                     MapReduce mapReduce = new MapReduce();
-                    llistatlinies = mapReduce.getLiniesFromFile(arxiu.toString());
-                    System.out.println(llistatlinies);
+                    lineslist = mapReduce.getLinesFromFile(file.toString());
+                    System.out.println(lineslist);
 
                 }else{
-                    System.out.println("L'arxiu" + args[i] + " no existeix.");
+                    System.out.println("File " + args[i] + " does not exist.");
                 }
             }
         }
