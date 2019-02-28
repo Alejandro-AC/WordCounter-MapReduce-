@@ -1,7 +1,9 @@
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
-
+    private static List<String> llistatlinies = new ArrayList<>();
     public static void main(String[] args) {
 
         if(args.length == 0){
@@ -14,13 +16,16 @@ public class Main {
                 if(arxiu.exists()){
 
                     //TODO tota la lògica del MapReduce
+                    MapReduce mapReduce = new MapReduce();
+                    llistatlinies = mapReduce.getLiniesFromFile(arxiu.toString());
+                    System.out.println(llistatlinies);
 
                 }else{
                     System.out.println("L'arxiu" + args[i] + " no existeix.");
                 }
             }
         }
-        
+
 
     }
 }
