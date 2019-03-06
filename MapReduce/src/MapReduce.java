@@ -1,8 +1,3 @@
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +7,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 class MapReduce implements Runnable {
 
@@ -23,7 +17,16 @@ private static Map<String, Integer> resultMap = new HashMap<>();
 
 private static final int CONSUMER_COUNT = Runtime.getRuntime().availableProcessors();
 private static final int BLOCKING_QUEUE_CAPACITY = 50;
-private final static BlockingQueue<String> blockingQueue = new ArrayBlockingQueue<String>(BLOCKING_QUEUE_CAPACITY);
+
+private final static BlockingQueue<String> blockingQueueMap = new ArrayBlockingQueue<String>(BLOCKING_QUEUE_CAPACITY);
+private final static BlockingQueue<List<List<String>>> blockingQueueShuffle = new ArrayBlockingQueue<List<List<String>>>(BLOCKING_QUEUE_CAPACITY);
+private final static BlockingQueue<List<String>> blockingQueueReduce = new ArrayBlockingQueue<List<String>>(BLOCKING_QUEUE_CAPACITY);
+private final static BlockingQueue<List<Map<String, Integer>>> blockingQueueMerge = new ArrayBlockingQueue<List<Map<String, Integer>>>(BLOCKING_QUEUE_CAPACITY);
+
+private static List<Map<String, Integer>> mergeMapList = new ArrayList<>();
+private static List<Map<String, Integer>> reducedMapList = new ArrayList<>();
+private static List<Map<String, Integer>> shuffleMapList = new ArrayList<>();
+private static List<Map<String, Integer>> mapMapList = new ArrayList<>();
 
 private boolean isConsumer = false;
 private static boolean producerIsDone = false;
@@ -82,7 +85,26 @@ private static boolean producerIsDone = false;
 	
 	private void consume() {
         try {
-            while (!producerIsDone || (producerIsDone && !blockingQueue.isEmpty())) {
+            while (!producerIsDone || (producerIsDone && !blockingQueueMap.isEmpty() && !blockingQueueShuffle.isEmpty()
+            							&& !blockingQueueReduce.isEmpty() && !blockingQueueMerge.isEmpty())) {
+            	
+            	if (!blockingQueueMerge.isEmpty() && mergeMapList.size() > 5) {
+            		merge(blockingQueueMerge.take());
+            		
+            	} else if (!blockingQueueReduce.isEmpty() && reducedMapList.size() > 5) {
+            		Map<String, Integer> reducedMap = reduce(blockingQueueReduce.take());
+            		
+            		mergeMapList.add(reducedMap);
+            		
+            		
+            	} else if (!blockingQueueShuffle.isEmpty()) {
+            		shuffle(blockingQueueShuffle.take());
+            		
+            	} else if (!blockingQueueMap.isEmpty()) {
+            		map(blockingQueueMap.take());
+            	}
+            	
+            	
                 String lineToProcess = blockingQueue.take();
                 List<String> wordList = wordMap(lineToProcess);
                 Map<String, Integer> wordMap = wordReduceSimple(wordList);
@@ -97,17 +119,17 @@ private static boolean producerIsDone = false;
     }
 	
     
-    public List<String> wordMap(String line) {
+    public List<String> map(String line) {
     	List<String> wordMap = new ArrayList<>();
     	
-    	for (String word : line.toLowerCase().split(" ") ) {
+    	for (String word : line.replaceAll("[.,]", "").toLowerCase().split(" ") ) {
     		wordMap.add(word);
     	}
     	
     	return wordMap;
     }
     
-    public Map<String, Integer> wordReduceSimple(List<String> wordList){
+    /*public Map<String, Integer> wordReduceSimple(List<String> wordList){
     	Map<String, Integer> wordMap = new HashMap<>();
     	for (String word : wordList) {
     		// Java 8 elegant way
@@ -115,9 +137,9 @@ private static boolean producerIsDone = false;
     	}
     	
     	return wordMap;
-    }
+    }*/
     
-    public Map<String, Integer> wordReduce(List<List<String>> wordLists){
+    /*public Map<String, Integer> wordReduce(List<List<String>> wordLists){
     	Map<String, Integer> wordMap = new HashMap<>();
     	
     	for (List<String> wordList : wordLists) {
@@ -130,13 +152,45 @@ private static boolean producerIsDone = false;
     	}
     	
     	return wordMap;
+    }*/
+    
+    public List<List<String>> shuffle(List<List<String>> mappedList){
+    	List<List<String>> shuffledList = new ArrayList<>();
+    	Map<String, Integer> indexMap = new HashMap<>();
+    	
+    	for (List<String> wordList : mappedList) {
+    		for(String word : wordList) {
+    			if (indexMap.get(word) != null){
+    				shuffledList.get(indexMap.get(word)).add(word);
+    			}else {
+    				List<String> auxWordList = new ArrayList<>();
+    				auxWordList.add(word);
+    				shuffledList.add(auxWordList);
+    				indexMap.put(word, shuffledList.size()-1);
+    			}
+    		}
+    	}
+    	
+    	return shuffledList;    	
     }
     
-    public void wordReduce(Map<String, Integer> wordMap){
+    public Map<String, Integer> reduce(List<String> shuffledWordsList){
+    	Map<String, Integer> reducedMap = new HashMap<>();
+    	String word = shuffledWordsList.get(0);
+    	int numWords = shuffledWordsList.size();
     	
-    	wordMap.forEach(
+    	
+    	reducedMap.put(word, numWords);
+    	
+    	return reducedMap;
+    }
+    
+    public void merge(List<Map<String, Integer>> wordMapList){
+    	for (Map<String,Integer> reducedMap : wordMapList) {
+    		reducedMap.forEach(
     		    (key, value) -> resultMap.merge(key, value, (x, y) -> x + y)
     		);
+    	}
     }
     
 
