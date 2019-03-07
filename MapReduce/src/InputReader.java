@@ -33,7 +33,7 @@ public class InputReader {
             
             for( String line : (Iterable<String>) lines::iterator )
             {
-            	MapReduce.getBlockingQueue().put(line); //blocked if reaches its capacity, until consumer consumes 
+            	MapReduce.getBlockingQueueMap().put(line); //blocked if reaches its capacity, until consumer consumes
             }
         
             lines.close();

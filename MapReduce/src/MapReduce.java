@@ -8,6 +8,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+
+
 class MapReduce implements Runnable {
 
 private static String[] filenameArr;
@@ -22,11 +24,13 @@ private final static BlockingQueue<String> blockingQueueMap = new ArrayBlockingQ
 private final static BlockingQueue<List<List<String>>> blockingQueueShuffle = new ArrayBlockingQueue<List<List<String>>>(BLOCKING_QUEUE_CAPACITY);
 private final static BlockingQueue<List<String>> blockingQueueReduce = new ArrayBlockingQueue<List<String>>(BLOCKING_QUEUE_CAPACITY);
 private final static BlockingQueue<List<Map<String, Integer>>> blockingQueueMerge = new ArrayBlockingQueue<List<Map<String, Integer>>>(BLOCKING_QUEUE_CAPACITY);
+private final static List<List<String>> waitingQueue = new ArrayList<List<String>>();
 
 private static List<Map<String, Integer>> mergeMapList = new ArrayList<>();
-private static List<Map<String, Integer>> reducedMapList = new ArrayList<>();
+private static List<List<String>> reducedMapList = new ArrayList<>();
 private static List<Map<String, Integer>> shuffleMapList = new ArrayList<>();
 private static List<Map<String, Integer>> mapMapList = new ArrayList<>();
+
 
 private boolean isConsumer = false;
 private static boolean producerIsDone = false;
@@ -69,6 +73,7 @@ private static boolean producerIsDone = false;
 	@Override
 	public void run() {		
         if (isConsumer) {
+			System.out.println("Soy un thread");
             consume();
         } else {
         	
@@ -76,6 +81,7 @@ private static boolean producerIsDone = false;
         	for (String filename : filenameArr) {
         		InputReader ir = new InputReader();
         		producerIsDone = ir.readInputFile(filename);
+        		System.out.println("Printo el final");
         		printResultMap(filename);
         		resultMap.clear();
         	}
@@ -85,30 +91,53 @@ private static boolean producerIsDone = false;
 	
 	private void consume() {
         try {
+
             while (!producerIsDone || (producerIsDone && !blockingQueueMap.isEmpty() && !blockingQueueShuffle.isEmpty()
             							&& !blockingQueueReduce.isEmpty() && !blockingQueueMerge.isEmpty())) {
-            	
-            	if (!blockingQueueMerge.isEmpty() && mergeMapList.size() > 5) {
+
+
+				if (blockingQueueMerge.size() > 5) {
+
             		merge(blockingQueueMerge.take());
+
             		
-            	} else if (!blockingQueueReduce.isEmpty() && reducedMapList.size() > 5) {
+            	} else if (blockingQueueReduce.size() > 5 ) {
+
             		Map<String, Integer> reducedMap = reduce(blockingQueueReduce.take());
-            		
             		mergeMapList.add(reducedMap);
-            		
-            		
-            	} else if (!blockingQueueShuffle.isEmpty()) {
-            		shuffle(blockingQueueShuffle.take());
+            		blockingQueueMerge.put(mergeMapList);
+
+            	} else if (blockingQueueShuffle.size() > 5 ) {
+
+            		List<List<String>> shuffledMap = shuffle(blockingQueueShuffle.take());
+
+            		reducedMapList = shuffledMap;
+
+            		for (int i=0; i< reducedMapList.size();i++){
+            		blockingQueueReduce.put(reducedMapList.get(i));
+            		}
             		
             	} else if (!blockingQueueMap.isEmpty()) {
-            		map(blockingQueueMap.take());
-            	}
+					System.out.println(blockingQueueMap.take());
+            		List<String> mappedList = map(blockingQueueMap.take());
+
+					waitingQueue.add(mappedList);
+					System.out.println(waitingQueue);//errores de concurrencia al leer.
+					if(waitingQueue.size() > 5 || blockingQueueMap.isEmpty()){
+
+						blockingQueueShuffle.put(waitingQueue);
+						waitingQueue.clear();
+					}
+
+
+            	}else {
+					System.out.println("No entro en ninguna condicion");
+				}
             	
-            	
-                String lineToProcess = blockingQueue.take();
+                /*String lineToProcess = blockingQueue.take();
                 List<String> wordList = wordMap(lineToProcess);
                 Map<String, Integer> wordMap = wordReduceSimple(wordList);
-                wordReduce(wordMap);                
+                wordReduce(wordMap);*/
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -205,8 +234,8 @@ private static boolean producerIsDone = false;
     
     
     
-    public static BlockingQueue<String> getBlockingQueue() {
-		return blockingQueue;
+    public static BlockingQueue<String> getBlockingQueueMap() {
+		return blockingQueueMap;
 	}
     
 
