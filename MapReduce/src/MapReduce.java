@@ -1,4 +1,8 @@
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,14 +32,39 @@ private static boolean producerIsDone = false;
 
 private static boolean minimizeMemoryUsage = false;
 private static boolean outputPerFile = true;
-private static boolean charCount = true;
+private static boolean charCount = false;
 
 	MapReduce(boolean consumer) {
 	    this.isConsumer = consumer;
 	}
 	
-	MapReduce(String[] filenames) {
-		filenameArr = filenames;
+	MapReduce(String[] args) {
+		
+		Set<String> argsSet = new HashSet<>();
+		List<String> filenameList = new ArrayList<>();
+		
+		for (String arg: args) {
+			if (arg.startsWith("-")) {
+				argsSet.add(arg);				
+			}else {
+				filenameList.add(arg);
+			}
+		} 
+		
+		filenameArr = filenameList.toArray(new String[0]);
+				
+		if (argsSet.contains("-combined")) {			
+			outputPerFile = false;
+		}
+		
+		if (argsSet.contains("-char")) {			
+			charCount = true;
+		}
+		
+		if (argsSet.contains("-minimizeMemory")) {
+			minimizeMemoryUsage = true;
+		}
+		
 		initialize();
 	}
 	
