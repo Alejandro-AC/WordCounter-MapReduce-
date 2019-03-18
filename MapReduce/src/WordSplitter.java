@@ -2,13 +2,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
- 
+
 public class WordSplitter extends Splitter {
 
-	private int nLines = 5;
+	private int nLines = 10;
 	private String blockOfLines = "";
 	
 	public void readAllFiles() {
@@ -17,9 +17,7 @@ public class WordSplitter extends Splitter {
 		}
 	}
  
-    public boolean split(String filename) {
-    	
-    	boolean finished = false;
+    public void split(String filename) {
  
         Path filePath = Paths.get(filename);
         try
@@ -30,13 +28,13 @@ public class WordSplitter extends Splitter {
             int linesRead = 0; 
             for( String line : (Iterable<String>) lines::iterator )
             {
-            	if (blockOfLines.equals("")) {
-            		blockOfLines += line.replaceAll("[.,]", "").toLowerCase();
+            	if (linesRead == 0) {
+            		blockOfLines += line;
             	}else {
-            		blockOfLines += " " + line.replaceAll("[.,;:]", "").toLowerCase();
+            		blockOfLines += " " + line;
             	}
             	linesRead++;
-            	if (nLines == linesRead) {
+            	if (linesRead == nLines) {
             		addJob();
             		linesRead = 0;
             	}            	
@@ -51,21 +49,28 @@ public class WordSplitter extends Splitter {
         } catch (Exception e){
             e.printStackTrace();
         }
-        
-        finished = true; // signal consumer
-        //System.out.println(Thread.currentThread().getName() + " producer is done");        
-        
-        
-        return finished;
- 
     }
     
     void addJob() {
+    	//blockOfLines = blockOfLines.replaceAll("[^a-zA-Z0-9ΰαθιμνοςσωϊόηρ\\s'·]", "").toLowerCase();
+    	blockOfLines = replace(blockOfLines);
 		Job mapJob = new WordMapper(blockOfLines);
-		//System.out.println("add  " + blockOfLines);
-		addJobToQueue(mapJob);		
+		if (MapReduce.isMinimizeMemoryUsage()) {
+			addJobToInputQueue(mapJob);	
+		}else {
+			addJobToQueue(mapJob);	
+		}
+			
 		blockOfLines = "";
-
+    }
+    
+    private String replace(String s) {
+    	String regex = "[.:;,]";
+    	Pattern pattern = Pattern.compile(regex);
+    	Matcher matcher = pattern.matcher(s);
+    	String result = matcher.replaceAll("");
+    	
+    	return result;
     }
     
  

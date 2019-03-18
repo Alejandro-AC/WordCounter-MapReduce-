@@ -1,6 +1,3 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -8,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 
@@ -18,17 +16,18 @@ private static String[] filenameArr;
 
 private static ConcurrentMap<String, Integer> resultMap = new ConcurrentHashMap<>();
 
-
-private static final int CONSUMER_COUNT = Runtime.getRuntime().availableProcessors() + 1;
-private static final int INPUT_BLOCKING_QUEUE_CAPACITY = 50;
-private static final int JOB_BLOCKING_QUEUE_CAPACITY = 15000;
+private static final int CONSUMER_COUNT = Runtime.getRuntime().availableProcessors() ;
+private static final int INPUT_BLOCKING_QUEUE_CAPACITY = 10;
 
 private final static BlockingQueue<Job> InputBlockingQueue = new ArrayBlockingQueue<Job>(INPUT_BLOCKING_QUEUE_CAPACITY);
-private final static BlockingQueue<Job> JobsBlockingQueue = new ArrayBlockingQueue<Job>(JOB_BLOCKING_QUEUE_CAPACITY);
+private final static BlockingQueue<Job> JobsBlockingQueue = new LinkedBlockingQueue<Job>();
 
 
 private boolean isConsumer = false;
 private static boolean producerIsDone = false;
+
+private static boolean minimizeMemoryUsage = false;
+private static boolean outputPerFile = true;
 
 	MapReduce(boolean consumer) {
 	    this.isConsumer = consumer;
@@ -47,7 +46,9 @@ private static boolean producerIsDone = false;
         producerPool.submit(new MapReduce(false)); // run method is called
         
         // create a pool of consumer threads to take jobs
-        ExecutorService consumerPool = Executors.newFixedThreadPool(CONSUMER_COUNT);
+        // ExecutorService consumerPool = Executors.newFixedThreadPool(CONSUMER_COUNT);
+        ExecutorService consumerPool = Executors.newWorkStealingPool();
+        
         for (int i = 0; i < CONSUMER_COUNT; i++) {
             consumerPool.submit(new MapReduce(true)); // run method is called
         }
@@ -55,6 +56,8 @@ private static boolean producerIsDone = false;
         producerPool.shutdown();
         consumerPool.shutdown();
 
+       
+        
         while (!producerPool.isTerminated() && !consumerPool.isTerminated()) {
         }
         
@@ -68,52 +71,71 @@ private static boolean producerIsDone = false;
 	@Override
 	public void run() {		
         if (isConsumer) {
-        	System.out.println("Consume");
             consume();
             
-        } else {        	
-        	
+        } else { 
         	for (String filename : filenameArr) {
         		
         		WordSplitter ws = new WordSplitter();
-        		ws.split(filename);      		
-
-            	while (!JobsBlockingQueue.isEmpty()) {            		
-            	}
+        		ws.split(filename); 
         		
-        		printResultMap(filename);
-        		resultMap.clear();
-        	}
+        		try {
+					Thread.sleep(50);				
+	            	while (!JobsBlockingQueue.isEmpty()) {   
+						Thread.sleep(50);					
+	            	}
+        		} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+        		
+        		if (outputPerFile) {
+        			printResultMap(filename);
+            		resultMap.clear();
+        		}
+            	        		
+        		
+        	}    
         	
-        	while (!JobsBlockingQueue.isEmpty()) {            		
+        	if (!outputPerFile) {
+        		printResultMap("Combined");
         	}
-        	
-        	producerIsDone = true;
             
         }
 	}
 	
 	private void consume() {
         try {
+        	
+        	
         	while (!producerIsDone || (producerIsDone && !JobsBlockingQueue.isEmpty())) {
-		    	Job job;   
-		    	/*
-		    	if (JobsBlockingQueue.isEmpty()) {		    		
-		    		job = InputBlockingQueue.take();
-		    	}else {
-		    		job = JobsBlockingQueue.take();
-		    	}*/
-		    	//System.out.println(JobsBlockingQueue);
+        		
+		    	Job job;   		    	
 		    	
-		    	job = JobsBlockingQueue.take();
+		    	if (minimizeMemoryUsage) {	
+		    		
+			    	if (JobsBlockingQueue.isEmpty()) {		    		
+			    		job = InputBlockingQueue.take();
+			    	}else {
+			    		job = JobsBlockingQueue.take();
+		    		}
+			    	
+		    	}else {
+		    		//System.out.println(JobsBlockingQueue);
+		    		//System.out.println(Thread.currentThread().getName() + " takes job");
+		    		job = JobsBlockingQueue.take();
+		    		//System.out.println(JobsBlockingQueue);
+		    	}	    		    	
+
+				
 				job.run();
+				
         	}
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
-        System.out.println(Thread.currentThread().getName() + " consumer is done");
+                
         
     }
 	
@@ -148,11 +170,16 @@ private static boolean producerIsDone = false;
 
     
     private void printResultMap(String filename) {
-    	System.out.println("\n\n" + filename + ":");
+    	System.out.println("\n" + filename + ":");
     	
     	resultMap.forEach((key, value) -> {
     	    System.out.println(key + " : " + value);
     	});
+    }
+    
+    
+    public static boolean isMinimizeMemoryUsage() {
+    	return minimizeMemoryUsage;
     }
     
     

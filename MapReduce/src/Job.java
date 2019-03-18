@@ -15,11 +15,11 @@ public abstract class Job implements Runnable {
 	
 	public void addJobToQueue(Job job) {
 		try {
-			MapReduce.getJobsBlockingQueue().put(job); //blocked if reaches its capacity, until consumer consumes
+			MapReduce.getJobsBlockingQueue().put(job);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} 
+		} //blocked if reaches its capacity, until consumer consumes		
 	}
 
 }
