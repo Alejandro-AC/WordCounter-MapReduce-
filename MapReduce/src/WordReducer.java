@@ -29,7 +29,6 @@ public class WordReducer extends Reducer{
     }
     
     private void addJob(){
-    	//System.out.println("adding to merge " + reducedMap);  
     	Job mergeJob = new WordMerger(reducedMap);
 		addJobToQueue(mergeJob);
     }

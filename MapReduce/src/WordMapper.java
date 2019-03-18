@@ -16,9 +16,7 @@ public class WordMapper extends Mapper{
 	}
 		
     public void map() {
-    	mappedLines = new ArrayList<>();
-    	
-    	//System.out.println("read  "+ Thread.currentThread().getName() +"  " + blockOfLinesToMap);      	
+    	mappedLines = new ArrayList<>();      	
     	
 		for (String word : blockOfLinesToMap.split("\\s")) {
 			mappedLines.add(word);
@@ -28,7 +26,6 @@ public class WordMapper extends Mapper{
     }
     
     private void addJob() {
-    	//System.out.println("adding to shuffle " + mappedLines);
 		Job shuffleJob = new WordShuffler(mappedLines);
 		addJobToQueue(shuffleJob);
     }

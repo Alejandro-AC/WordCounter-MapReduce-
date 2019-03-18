@@ -11,7 +11,6 @@ public class WordShuffler extends Shuffler {
 	WordShuffler(List<String> wordsList){
 		wordsToShuffle = wordsList;
 	}
-
 	
 	@Override
 	public void run() {
@@ -33,15 +32,12 @@ public class WordShuffler extends Shuffler {
 			}
 		}
 		
-		addJob();
-				
+		addJob();				
     }
     
     private void addJob(){
-    	//System.out.println("adding to reduce " + shuffledWordsList);    	
     	Job reduceJob = new WordReducer(shuffledWordsList);
 		addJobToQueue(reduceJob);
     }
-    
-    
+        
 }

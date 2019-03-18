@@ -9,12 +9,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 
-
 class MapReduce implements Runnable {
 
 private static String[] filenameArr;
 
 private static ConcurrentMap<String, Integer> resultMap = new ConcurrentHashMap<>();
+private static ConcurrentMap<Character, Integer> charResultMap = new ConcurrentHashMap<>();
 
 private static final int CONSUMER_COUNT = Runtime.getRuntime().availableProcessors() ;
 private static final int INPUT_BLOCKING_QUEUE_CAPACITY = 10;
@@ -28,6 +28,7 @@ private static boolean producerIsDone = false;
 
 private static boolean minimizeMemoryUsage = false;
 private static boolean outputPerFile = true;
+private static boolean charCount = true;
 
 	MapReduce(boolean consumer) {
 	    this.isConsumer = consumer;
@@ -76,8 +77,15 @@ private static boolean outputPerFile = true;
         } else { 
         	for (String filename : filenameArr) {
         		
-        		WordSplitter ws = new WordSplitter();
-        		ws.split(filename); 
+        		if (charCount) {
+        			CharSplitter cs = new CharSplitter();
+            		cs.split(filename); 
+        		}else {
+        			WordSplitter ws = new WordSplitter();
+            		ws.split(filename); 
+        		}
+        		
+        		
         		
         		try {
 					Thread.sleep(50);				
@@ -138,41 +146,19 @@ private static boolean outputPerFile = true;
                 
         
     }
-	
-    
-
-    
-    /*public Map<String, Integer> wordReduceSimple(List<String> wordList){
-    	Map<String, Integer> wordMap = new HashMap<>();
-    	for (String word : wordList) {
-    		// Java 8 elegant way
-			wordMap.merge(word, 1, (x, y) -> x + y);
-    	}
-    	
-    	return wordMap;
-    }*/
-    
-    /*public Map<String, Integer> wordReduce(List<List<String>> wordLists){
-    	Map<String, Integer> wordMap = new HashMap<>();
-    	
-    	for (List<String> wordList : wordLists) {
-    		for(String word : wordList) {
-    			// Java 8 compact way
-    			//wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
-    			// Java 8 elegant way
-    			wordMap.merge(word, 1, (x, y) -> x + y);
-    		}
-    	}
-    	
-    	return wordMap;
-    }*/
-        
-
     
     private void printResultMap(String filename) {
     	System.out.println("\n" + filename + ":");
     	
-    	resultMap.forEach((key, value) -> {
+    	Map<?, Integer> map;
+    	
+    	if (charCount) {
+    		map = charResultMap;
+    	}else {
+    		map = resultMap;
+    	}
+    	
+    	map.forEach((key, value) -> {
     	    System.out.println(key + " : " + value);
     	});
     }
@@ -180,9 +166,7 @@ private static boolean outputPerFile = true;
     
     public static boolean isMinimizeMemoryUsage() {
     	return minimizeMemoryUsage;
-    }
-    
-    
+    }    
     
     public static BlockingQueue<Job> getJobsBlockingQueue() {
 		return JobsBlockingQueue;
@@ -197,10 +181,8 @@ private static boolean outputPerFile = true;
 		return resultMap;
 	}
     
+    public static Map<Character, Integer> getCharResultMap() {
+		return charResultMap;
+	}
     
-
-
-
-
-
 }

@@ -15,14 +15,9 @@ public class WordMerger extends Merger{
 	
     public void merge(Map<String, Integer> map){    	
     	
-    	//System.out.println("Merging " + mapToMerge);  
-    	
     	mapToMerge.forEach(
 		    (key, value) -> map.merge(key, value, (x, y) -> x + y)
-		);    	
-    	
-    }
-    
-    
+		);    	    	
+    }    
     
 }
